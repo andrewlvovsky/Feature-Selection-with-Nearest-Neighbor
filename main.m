@@ -24,9 +24,20 @@ else
 end
 A = fscanf(fileID, '%f', sizeA);
 fclose(fileID);
-A = A'; % transposing A since input read is put in col x row
+A = A'; % transposing A since input read is put in col x row matrix
 end
 
-function y = nearest_neighbor(x)
-% TODO
+function nearest_member_index = nearest_neighbor(A, member_index)
+min_distance = Inf;
+for i = 1:size(A(:,1))
+    if member_index ~= i
+        new_distance = get_distance(member_index, i);
+        if new_distance < min_distance
+            min_distance = new_distance;
+        end
+    end
+end
+end
+
+function distance = get_distance(origin, far_point, n)
 end
