@@ -1,22 +1,16 @@
 % Project 2 
 
-% A = read_data("small86.txt");
-% B = size(A(1,:));
-% D = get_distance(A, 1, 2);
-
-function B = main
+function main()
 disp("Welcome to Andrew Lvovsky's Nearest Neighbor Feature Selection.");
 prompt = 'Type in the name of the file containing your dataset: ';
 
 filename = input(prompt, 's');
 A = read_data(filename);
-B = zeros([200 1]);
-num_of_rows = size(A(:,1));
-num_of_rows = num_of_rows(1,1);
-for i = 1 : num_of_rows
-    nearest_member = nearest_neighbor(A, i);
-    B(i,1) = nearest_member;
-end
+% B = zeros([200 1]);
+% num_of_rows = size(A(:,1));
+% num_of_rows = num_of_rows(1,1);
+accuracy = nearest_neighbor(A, [7 9 2]) * 100;
+disp(['Accuracy for all features is ', num2str(accuracy), '%']);
 end
 
 % Reads a dataset from a specified file, outputs an m x n matrix
@@ -38,30 +32,46 @@ fclose(fileID);
 A = A'; % transposing A since input read is put in col x row matrix
 end
 
-% Returns the nearest member to the current member in dataset A
-function nearest_member_index = nearest_neighbor(A, member_index)
+% Returns the accuracy of the dataset A, depending on what features were
+% passed in.
+function accuracy = nearest_neighbor(A, features)
 min_distance = Inf;
-num_of_rows = size(A(:,1));
-num_of_rows = num_of_rows(1,1);
-for i = 1 : num_of_rows  % for all members
-    if member_index ~= i
-        new_distance = get_distance(A, member_index, i);
-        if new_distance < min_distance
-            min_distance = new_distance;
-            nearest_member_index = i;
+correct_counter = 0;
+% frequency_map = containers.Map(class,frequency);
+num_of_members = size(A(:,1));
+num_of_members = num_of_members(1,1);
+for i = 1 : num_of_members
+    for j = 1 : num_of_members
+        if i ~= j % leave-one-out
+            new_distance = get_distance(A, features, i, j);
+            if new_distance < min_distance
+                min_distance = new_distance;
+                nearest_member = A(j,1);
+            end
+%             if isKey(frequency_map, A(j,1))
+%                 % increment the counter of that class
+%                 frequency_map(A(j,1)) = frequency_map(A(j,1)) + 1;
+%             else
+%                 % add new class as key in map
+%                 frequency_map(A(j,1)) = 1;
+%             end
         end
     end
+    if A(i,1) == nearest_member
+        correct_counter = correct_counter + 1;
+    end
 end
+accuracy = correct_counter / num_of_members;
 end
 
 % Computes and returns the Euclidian distance for n-dimensions, where n is
-% the number of columns in dataset A, minus the features column
-function distance = get_distance(A, origin_point, other_point)
+% the number of elements in the features array
+function distance = get_distance(A, features, origin_point, other_point)
 distance = 0;
-num_of_cols = size(A(1,:));
-num_of_cols = num_of_cols(1,2);
-for i = 2 : num_of_cols  % for all features, skipping member column
-    distance = distance + ( A(other_point, i) - A(origin_point, i) )^2;
+for i = 1 : numel(features)  % for all features, skipping member column
+    curr_feature = features(i);
+    distance = distance + ...
+        ( A(other_point, curr_feature+1) - A(origin_point, curr_feature+1) )^2;
 end
 distance = sqrt(distance);
 end
