@@ -1,24 +1,24 @@
 % Project 2 
 
 function main()
-disp("Welcome to Andrew Lvovsky's Nearest Neighbor Feature Selection.");
-prompt = 'Type in the name of the file containing your dataset: ';
+% disp("Welcome to Andrew Lvovsky's Nearest Neighbor Feature Selection.");
+% prompt = 'Type in the name of the file containing your dataset: ';
 
-filename = input(prompt, 's');
-A = read_data(filename);
-% B = zeros([200 1]);
-% num_of_rows = size(A(:,1));
-% num_of_rows = num_of_rows(1,1);
-accuracy = nearest_neighbor(A, [7 9 2]) * 100;
+% filename = input(prompt, 's');
+A = read_data('large110.txt');
+features = [1 66 6];
+accuracy = nearest_neighbor(A, features) * 100;
 disp(['Accuracy for all features is ', num2str(accuracy), '%']);
 end
 
 % Reads a dataset from a specified file, outputs an m x n matrix
 function A = read_data(filename)
 fileID = fopen(filename);
-if filename == "small86.txt"
+if filename == "small86.txt" || filename == "small108.txt" || ...
+        filename == "small109.txt" || filename == "small110.txt"
     sizeA = [11 200];
-elseif filename == "large4.txt"
+elseif filename == "large4.txt" || filename == "large108.txt" || ...
+        filename == "large109.txt" || filename == "large110.txt"
     sizeA = [101 200];
 else
     row_prompt = 'How many rows in your dataset? ';
@@ -35,12 +35,11 @@ end
 % Returns the accuracy of the dataset A, depending on what features were
 % passed in.
 function accuracy = nearest_neighbor(A, features)
-min_distance = Inf;
 correct_counter = 0;
-% frequency_map = containers.Map(class,frequency);
 num_of_members = size(A(:,1));
 num_of_members = num_of_members(1,1);
 for i = 1 : num_of_members
+    min_distance = Inf;
     for j = 1 : num_of_members
         if i ~= j % leave-one-out
             new_distance = get_distance(A, features, i, j);
@@ -48,13 +47,6 @@ for i = 1 : num_of_members
                 min_distance = new_distance;
                 nearest_member = A(j,1);
             end
-%             if isKey(frequency_map, A(j,1))
-%                 % increment the counter of that class
-%                 frequency_map(A(j,1)) = frequency_map(A(j,1)) + 1;
-%             else
-%                 % add new class as key in map
-%                 frequency_map(A(j,1)) = 1;
-%             end
         end
     end
     if A(i,1) == nearest_member
