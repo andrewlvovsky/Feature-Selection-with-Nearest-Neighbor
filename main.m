@@ -1,57 +1,60 @@
-% Project 2
+% Project 2 - Feature Selection with Nearest Neighbor
 
 function main()
-% disp("Welcome to Andrew Lvovsky's Nearest Neighbor Feature Selection.");
-% prompt = 'Type in the name of the file containing your dataset: ';
+disp("Welcome to Andrew Lvovsky's Nearest Neighbor Feature Selection.");
+prompt = 'Type in the name of the file containing your dataset: ';
 
-% filename = input(prompt, 's');
-data = read_data('large4.txt');
-% features = [];
-% accuracy = nearest_neighbor(data, features) * 100;
-% [accuracy, best_feature_set] = forward_selection(data);
-% disp(best_feature_set);
-% disp(['Feature set [', num2str(best_feature_set), ...
-%     '] was best at an accuracy of ', num2str(accuracy), '%.']);
-[accuracy, best_feature_set] = backward_elim(data);
-disp(best_feature_set);
-disp(['Feature set [', num2str(best_feature_set), ...
-    '] was best at an accuracy of ', num2str(accuracy), '%.']);
+filename = input(prompt, 's');
+data = read_data(filename);
+disp("Type the number of the algorithm you would like to run.");
+disp("1: Forward Selection");
+disp("2: Backward Elimination");
+disp("3: Andrew's Special Algorithm");
+number = input('Enter choice: ');
+switch number
+    case 1
+        [accuracy, best_feature_set] = forward_selection(data, false);
+        disp(" ");
+        disp(['Feature subset [', num2str(best_feature_set), ...
+            '] is best at an accuracy of ', num2str(accuracy), '%.']);
+    case 2
+        [accuracy, best_feature_set] = backward_elim(data);
+        disp(" ");
+        disp(['Feature subset [', num2str(best_feature_set), ...
+            '] is best at an accuracy of ', num2str(accuracy), '%.']);
+    case 3
+        [accuracy, best_feature_set] = forward_selection(data, true);
+        disp(" ");
+        disp(['Feature subset [', num2str(best_feature_set), ...
+            '] is best at an accuracy of ', num2str(accuracy), '%.']);
+    otherwise
+        disp("Incorrect response.");
+end
 end
 
-% Reads a dataset from a specified file, outputs an m x n matrix (data)
-function data = read_data(filename)
-fileID = fopen(filename);
-if filename == "small86.txt" || filename == "small108.txt" || ...
-        filename == "small109.txt" || filename == "small110.txt"
-    size_data = [11 200];
-elseif filename == "large4.txt" || filename == "large108.txt" || ...
-        filename == "large109.txt" || filename == "large110.txt"
-    size_data = [101 200];
-else
-    row_prompt = 'How many rows in your dataset? ';
-    row_num = input(row_prompt);
-    col_prompt = 'How many columns in your dataset? ';
-    col_num = input(col_prompt);
-    size_data = [col_num row_num];
-end
-data = fscanf(fileID, '%f', size_data);
-fclose(fileID);
-data = data'; % transposing data since input is put in col x row matrix
-end
-
-% Returns the most accurate features out of all of th
-function [best_accuracy, best_feature_set] = forward_selection(data)
+% Returns the most accurate features by forward selection
+function [best_accuracy, best_feature_set] = forward_selection(data, prune)
 num_of_features = get_num_of_features(data);
 features = [];
+best_feature_set = [];
 best_accuracy = 0;
+if prune
+    best_accuracy = LOO_cross_val(data, (1), false, best_accuracy);
+end
 for i = 1 : num_of_features
     disp(" ");
     disp(['On level ', num2str(i), ' of the search tree...']);
     disp(" ");
     for j = 1 : num_of_features
         if isempty(intersect(features,j))
-            features = [features, j];  % adding feature
-            test_accuracy = nearest_neighbor(data, features);
+            features = [features, j];  % adding feature 
+            if prune
+                test_accuracy = LOO_cross_val...
+                    (data, features, true, best_accuracy);
+            else
+                test_accuracy = LOO_cross_val...
+                    (data, features, false, best_accuracy);
+            end
             disp(['Tested feature set [', num2str(features), ...
                 '] with accuracy: ', num2str(test_accuracy), '%']);
             features(end) = []; % removing feature
@@ -68,14 +71,16 @@ for i = 1 : num_of_features
 end
 end
 
-function [overall_best_accuracy, overall_best_feature_set] = backward_elim(data)
+% Returns the most accurate features by backward elimination
+function [overall_best_accuracy, overall_best_feature_set] = ...
+    backward_elim(data)
 num_of_features = get_num_of_features(data);
 features = zeros(1, num_of_features);   % preallocates features array
 overall_best_accuracy = 0;
 for i = 1 : num_of_features    % populates array with all features
     features(i) = i;
 end
-test_accuracy = nearest_neighbor(data, features);
+test_accuracy = LOO_cross_val(data, features, false, overall_best_accuracy);
 disp(['Tested full feature set [', num2str(features), ...
     '] with accuracy: ', num2str(test_accuracy), '%']);
 overall_best_accuracy = test_accuracy;
@@ -87,7 +92,7 @@ while ~isempty(features)
         for i = 1 : size(features,2)
             removed_feature = features(i);
             features(i) = [];   % remove feature from array
-            test_accuracy = nearest_neighbor(data, features);
+            test_accuracy = LOO_cross_val(data, features, false, overall_best_accuracy);
             disp(['Removed feature ', num2str(removed_feature), ...
                 ' from feature set [', num2str(features), ...
                 '] with accuracy: ', num2str(test_accuracy), '%']);
@@ -114,7 +119,7 @@ while ~isempty(features)
     else
         removed_feature = features;
         features = [];   % remove feature from array
-        test_accuracy = nearest_neighbor(data, features);
+        test_accuracy = LOO_cross_val(data, features, false, overall_best_accuracy);
         if current_best_accuracy > overall_best_accuracy
             overall_best_accuracy = test_accuracy;
             overall_best_feature_set = features;
@@ -128,9 +133,11 @@ end
 end
 
 % Returns the accuracy of the data, depending on what features were
-% passed in.
-function accuracy = nearest_neighbor(data, features)
+% passed in. If prune flag is enabled, pruning will take place and should
+% thus speed up the algorithm.
+function accuracy = LOO_cross_val(data, features, prune, global_best_acc)
 correct_counter = 0;
+incorrect_counter = 0;
 num_of_members = size(data(:,1));
 num_of_members = num_of_members(1,1);
 for i = 1 : num_of_members
@@ -146,6 +153,13 @@ for i = 1 : num_of_members
     end
     if data(i,1) == nearest_member
         correct_counter = correct_counter + 1;
+    elseif prune == true
+        incorrect_counter = incorrect_counter + 1;
+        error_rate = 100 - global_best_acc;
+        if (incorrect_counter / num_of_members) * 100 > error_rate
+            accuracy = 0;
+            return;
+        end
     end
 end
 accuracy = (correct_counter / num_of_members) * 100;
@@ -163,7 +177,29 @@ end
 distance = sqrt(distance);
 end
 
+% Returns the number of features in the dataset
 function num_of_features = get_num_of_features(data)
 num_of_features = size(data(1,:));
 num_of_features = num_of_features(2) - 1;
+end
+
+% Reads a dataset from a specified file, outputs an m x n matrix (data)
+function data = read_data(filename)
+fileID = fopen(filename);
+if filename == "small86.txt" || filename == "small108.txt" || ...
+        filename == "small109.txt" || filename == "small110.txt"
+    size_data = [11 200];
+elseif filename == "large4.txt" || filename == "large108.txt" || ...
+        filename == "large109.txt" || filename == "large110.txt"
+    size_data = [101 200];
+else
+    row_prompt = 'How many rows in your dataset? ';
+    row_num = input(row_prompt);
+    col_prompt = 'How many columns in your dataset? ';
+    col_num = input(col_prompt);
+    size_data = [col_num row_num];
+end
+data = fscanf(fileID, '%f', size_data);
+fclose(fileID);
+data = data'; % transposing data since input is put in col x row matrix
 end
